@@ -13,12 +13,6 @@ class PokerSimulator:
         self.deck = self.create_deck()
         self.hands = self.deal_hands()
         self.board = []
-        
-        # for i in range(len(STARTING_HANDS)):
-        #     self.hands[i].append(self.deck.pop())
-        # for i in range(len(STARTING_HANDS)):
-        #     self.hands[i].append(self.deck.pop())
-
 
         self.checkers = [
             self.check_royal_flush, 
@@ -54,28 +48,28 @@ class PokerSimulator:
     def get_reserved_cards(self):
         reserved_cards = []
         for i in self.starting_hands:
-            assert type(i) == list or i.strip() == "?"
+            assert type(i) == list or i.strip() == "?", "Invalid Input"
             if type(i) == list:
-                assert len(i) == 2, "Invalid Input"
+                assert len(i) == 2, "{} {}".format(i, len(i))
                 reserved_cards += [i[0]] if type(i[0]) == list else []
                 reserved_cards += [i[1]] if type(i[0]) == list else []
         return reserved_cards
+        
 
     def create_deck(self):
         deck = [[(i%13) + 2, SUITS[i//13]] for i in range(52) if [(i%13) + 2, SUITS[i//13]] not in self.reserved_cards]
         np.random.shuffle(deck)
         return deck
+        #self.deal_hands()
 
     def deal_hands(self):
         hands = self.starting_hands
         for i in range(len(hands)):
-            assert hands[i] == "?" or type(hands[i]) == list, "Invalid Input"
             if type(hands[i]) == str and hands[i].strip() == "?":
                 hands[i] = [self.deck.pop(), self.deck.pop()]
             elif type(hands[i]) == list:
                 hands[i][0] = self.deck.pop() if hands[i][0] == "?" else hands[i][0]
                 hands[i][1] = self.deck.pop() if hands[i][1] == "?" else hands[i][1]
-
         return hands
 
     def flop(self):
@@ -87,17 +81,8 @@ class PokerSimulator:
         self.deck.pop()
         self.board.append(self.deck.pop())
 
-    def print_card(self, card, end='\n'):
-        print(SUITS[card // 13][0] + str(card % 13), end=end)
-
-    def print_hand(self, player):
-        self.print_card(self.hands[player][0], end=', ')
-        self.print_card(self.hands[player][1], end='\n')
-
-    def print_board(self):
-        for i in range(len(self.board)):
-            self.print_card(self.board[i], end="\n" if i == len(self.board) - 1 else ", ")
-
+    def combine_board_and_hands(self):
+        self.hands = [hand + sim.board for hand in self.hands]
     
     def check_royal_flush(self, cards):
         straight_flush = self.check_straight_flush(cards)
@@ -161,49 +146,78 @@ class PokerSimulator:
     def check_pair(self, cards):
         hand = [z[0] for z in sorted(cards, reverse=True)]
         pairs = [sorted(cards, reverse=True)[i] for i in range(len(hand)) if hand.count(hand[i]) == 2][:4]
-        next_best = [x for x in sorted(cards, reverse=True) if x not in pairs]
-        return sorted(pairs, reverse=True) + next_best[:(5 - len(pairs))] if pairs else None
+        next_best = sorted([x for x in cards if x not in pairs], reverse=True)
+        #sorted(pairs + next_best[:3], reverse=True))
+        return sorted(pairs, reverse=True) + next_best[:5 - len(pairs)] if pairs else None
 
-    def check_high_card(self, cards):
-        return self.n_best_cards(cards, 5)
+    def check_high_card(self, cards, n=5):
+        return self.n_best_cards(cards, n)
 
     def n_best_cards(self, cards, n):
-        assert len(cards) > n, "Number of cards must be greater than n"
+        assert len(cards) >= n, "Number of cards must be greater than n"
         return [x for x in sorted(cards, reverse=True)[:n]]
 
     def find_duplicates(self, hand):
         #print(hand)
         assert len(set(map(tuple, hand))) == 7, "FUCK"
 
+    def determine_winner(self):
+        outcomes = [z[0] for z in sim.best_hands]
+        print(self.best_hands)
+        if len(set(outcomes)) == len(self.starting_hands):
+            #print(outcomes, outcomes.index(max(outcomes)))
+            pass
+        else:
+            #Breaking Ties
+            tying_hand = max(outcomes) 
+            tying_players = [i for i in range(len(outcomes)) if outcomes[i] == max(outcomes)]
+            #If there are ever two or more royal flushes (lol)
+            if tying_hand == 0:
+                return -1
+            elif tying_hand == 7:
+                print([self.best_hands[i] for i in tying_players])
+            elif tying_hand == 8:
+                [self.best_hands[i] for i in tying_players]
+
 STARTING_HANDS = [
     [
-        [7, "HEARTS"], [2, "SPADES"]
+        [10, "HEARTS"], [10, "CLUBS"]
+    ], 
+    [
+        [10, "DIAMONDS"], [10, "SPADES"]
     ]
 ]
 
-NUMBER_OF_GAMES = 25000
+NUMBER_OF_PLAYERS = 2
+
+NUMBER_OF_GAMES = 1
 
 outcomes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 wins = [[] for i in range(len(STARTING_HANDS))]
 
 for x in range(NUMBER_OF_GAMES):
-    sim = PokerSimulator(deepcopy(STARTING_HANDS))
+    sim = PokerSimulator(STARTING_HANDS)
     sim.flop()
     sim.turn_river()
     sim.turn_river()
+    sim.combine_board_and_hands()
+    #print(sim.hands)
     for z in range(len(sim.starting_hands)):
-        hand = sim.hands[z] + sim.board
+        hand = sim.hands[z]
         sim.find_duplicates(hand)
         #print(z, hand)
         for i, func in enumerate(sim.checkers):
-            outcome = func(sim.hands[z] + sim.board)
+            outcome = func(hand)
             if outcome != None:
+                #print(func, outcome)
                 outcomes[i] += 1
                 sim.best_hands.append([i, outcome])
                 break
     #print(sim.best_hands)
+    sim.determine_winner()
+    #print(sim.best_hands)
 
-TOTAL_HANDS_DEALT = len(STARTING_HANDS) * NUMBER_OF_GAMES
+TOTAL_HANDS_DEALT = NUMBER_OF_PLAYERS * NUMBER_OF_GAMES
 
 for i in zip(sim.hand_names, outcomes):
     print("{}: {:.5%}".format(i[0], (i[1] / TOTAL_HANDS_DEALT)))
