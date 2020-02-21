@@ -42,7 +42,6 @@ class PokerSimulator:
         self.best_hands = []
 
         self.hand_count = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        self.win_count = [[] for i in range(len(self.starting_hands))]
 
         #self.get_reserved_cards()
 
@@ -159,94 +158,147 @@ class PokerSimulator:
         return [x for x in sorted(cards, reverse=True)[:n]]
 
     def find_duplicates(self, hand):
-        #print(hand)
         assert len(set(map(tuple, hand))) == 7, "FUCK"
 
+    def highest_card(self, tying_players, s=0, f=5):
+        high_cards = []
+        for i in [self.best_hands[i][1][s:f] for i in tying_players]:
+            high_cards.append([q[0] for q in i])
+        
+        in_ = None
+        for i, f in enumerate(zip(*high_cards)):
+            high = max(f)
+            in_ = [1 if j == high else 0 for j in f] if in_ == None else [1 if f[z] == high and in_[z] == 1 else 0 for z in range(len(f))]
+            if collections.Counter(in_)[1] == 1:
+                return in_.index(1)
+            #print(f, high, in_, counter[1])
+        # counter = collections.Counter(in_)
+        return [x for x in range(len(in_)) if in_[x] == 1] if collections.Counter(in_)[1] > 1 else in_.index(1)
+
     def determine_winner(self):
-        test = [
-        [[12, 'HEARTS'], [12, 'CLUBS'], [9, 'SPADES'], [8, 'CLUBS'], [11, 'CLUBS']], 
-        [[12, 'SPADES'], [12, 'DIAMONDS'], [9, 'SPADES'], [8, 'CLUBS'], [10, 'CLUBS']]
-        ]
-        sim.best_hands[0][1] = test[0]
-        sim.best_hands[1][1] = test[1]
+        # test = [[[10, 'HEARTS'], [10, 'CLUBS'], [8, 'HEARTS'], [8, 'CLUBS'], [11, 'DIAMONDS']], [[11, 'DIAMONDS'], [10, 'CLUBS'], [9, 'HEARTS'], [8, 'HEARTS'], [7, 'CLUBS']]]
+        # self.best_hands[0][1] = test[0]
+        # self.best_hands[1][1] = test[1]
 
         #print(sim.best_hands)
-
         outcomes = [z[0] for z in sim.best_hands]
-        #print(self.best_hands)
-        if len(set(outcomes)) == len(self.starting_hands):
-            #print(outcomes, outcomes.index(max(outcomes)))
-            pass
+        counter = collections.Counter(outcomes)
+        best_hand = min(outcomes)
+        #print(counter[best_hand])
+        #print(sim.hands)
+        #print(sim.best_hands)
+        if counter[best_hand] == 1:
+            return outcomes.index(best_hand)
         else:
             #Breaking Ties
-            #tying_hand = max(outcomes) 
-            tying_hand = 8
-            tying_players = [i for i in range(len(outcomes)) if outcomes[i] == max(outcomes)]
-            #If there are ever two or more royal flushes (lol)
-            if tying_hand == 0:
-                return -1
-            elif tying_hand == 7:
-                print([self.best_hands[i][1][4:] for i in tying_players])
-            elif tying_hand == 8:
-                high = max([d[1][0][0] for d in self.best_hands])
-                winners = [i for i in tying_players if sim.best_hands[i][1][0][0] == high]
-                print(high, winners)
-                if len(winners) == 1:
-                    return winners[0]
-                else:
-                    high_cards = []
-                    for i in [self.best_hands[i][1][2:] for i in tying_players]:
-                        high_cards.append([q[0] for q in i])
+            tying_players = [i for i in range(len(outcomes)) if outcomes[i] == best_hand]
+            #If there are ever two or more royal flushes
+            if best_hand == 0:
+                return tying_players
+            #Two or more straight flushes
+            elif best_hand == 1:
+                return self.highest_card(tying_players, 0, 5)
+            #two or more four of a kinds
+            elif best_hand == 2:
+                return self.highest_card(tying_players, 0, 4)
+            #two or more full houses
+            elif best_hand == 3:
+                finisher = self.highest_card(tying_players,0, 3)
+                return finisher if type(finisher) == int else self.highest_card(tying_players, 3, 5)
+            #twp or more flushes
+            elif best_hand == 4:
+                return self.highest_card(tying_players, 0, 5)
+            #two or more straights
+            elif best_hand == 5:
+                return self.highest_card(tying_players, 0, 5)
+            #two or more three of a kinds
+            elif best_hand == 6:
+                finisher = self.highest_card(tying_players, s=0, f=3)
+                assert type(finisher) == list or type(finisher) == int, "Error"
+                return finisher if type(finisher) == int else self.highest_card(tying_players, 3, 5)
+            #two or more two pairs
+            elif best_hand == 7:
+                finisher = self.highest_card(tying_players, s=0, f=4)
+                assert type(finisher) == list or type(finisher) == int, "Error"
+                return finisher if type(finisher) == int else self.highest_card(tying_players, 4, 5)
+            #two or more pairs
+            elif best_hand == 8:
+                finisher = self.highest_card(tying_players, s=0, f=2)
+                assert type(finisher) == list or type(finisher) == int, "Error"
+                return finisher if type(finisher) == int else self.highest_card(tying_players, 2, 5)
+            elif best_hand == 9:
+                return self.highest_card(tying_players, s=0, f=5)
+                # high = max([d[1][0][0] for d in self.best_hands])
+                # winners = [i for i in tying_players if sim.best_hands[i][1][0][0] == high]
+                # if len(winners) == 1:
+                #     return winners[0]
+                # else:
+                #     return self.highest_card(tying_players, s=2)
+                    # high_cards = []
+                    # for i in [self.best_hands[i][1][2:] for i in tying_players]:
+                    #     high_cards.append([q[0] for q in i])
                     
-                    in_ = None
-                    for i, f in enumerate(zip(*high_cards)):
-                        high = max(f)
-                        in_ = [1 if j == high else 0 for j in f] if in_ == None else [1 if f[j] == high and in_[j] == 1 else 0 for j in range(len(f))]
-                    counter = collections.Counter(in_)
-                    return [x for x in in_ if x == 1] if counter[1] > 1 else in_.index(1)
+                    # in_ = None
+                    # for i, f in enumerate(zip(*high_cards)):
+                    #     high = max(f)
+                    #     in_ = [1 if j == high else 0 for j in f] if in_ == None else [1 if f[j] == high and in_[j] == 1 else 0 for j in range(len(f))]
+                    # counter = collections.Counter(in_)
+                    # return [x for x in in_ if x == 1] if counter[1] > 1 else in_.index(1)
 
 STARTING_HANDS = [
     [
-        [10, "HEARTS"], [10, "CLUBS"]
+        [5, "HEARTS"], [5, "CLUBS"]
     ], 
     [
-        [10, "DIAMONDS"], [10, "SPADES"]
+        "?", "?"
     ]
 ]
 
-NUMBER_OF_PLAYERS = 2
+from time import time
+STARTING_TIME = time()
 
-NUMBER_OF_GAMES = 1
+NUMBER_OF_PLAYERS = len(STARTING_HANDS)
+
+NUMBER_OF_GAMES = 50000
 
 outcomes = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-wins = [[] for i in range(len(STARTING_HANDS))]
+win_count = [0 for i in STARTING_HANDS]
+
 
 for x in range(NUMBER_OF_GAMES):
-    sim = PokerSimulator(STARTING_HANDS)
+    sim = PokerSimulator(deepcopy(STARTING_HANDS))
     sim.flop()
     sim.turn_river()
     sim.turn_river()
     sim.combine_board_and_hands()
-    #print(sim.hands)
+
     for z in range(len(sim.starting_hands)):
         hand = sim.hands[z]
-        sim.find_duplicates(hand)
-        #print(z, hand)
+        #sim.find_duplicates(hand)
         for i, func in enumerate(sim.checkers):
             outcome = func(hand)
             if outcome != None:
-                #print(func, outcome)
                 outcomes[i] += 1
                 sim.best_hands.append([i, outcome])
                 break
-    #print(sim.best_hands)
-    print(sim.determine_winner())
-    #print(sim.best_hands)
+    
+    winner = sim.determine_winner()
+    if type(winner) == int:
+        win_count[winner] += 1
 
 TOTAL_HANDS_DEALT = NUMBER_OF_PLAYERS * NUMBER_OF_GAMES
 
 for i in zip(sim.hand_names, outcomes):
     print("{}: {:.5%}".format(i[0], (i[1] / TOTAL_HANDS_DEALT)))
+
+WIN_PERCENTAGE = ["{:.5%}".format(x/NUMBER_OF_GAMES) for x in win_count]
+
+HANDS = [STARTING_HANDS[i] if len(STARTING_HANDS) > i else None for i in range(8)]
+log = '{}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}'.format(NUMBER_OF_PLAYERS, NUMBER_OF_GAMES, win_count[0] / NUMBER_OF_GAMES, win_count[1] / NUMBER_OF_GAMES, *HANDS)
+with open("results.txt", "a") as fh:
+    fh.write(log + "\n")
+
+print(time() - STARTING_TIME)
 
 # print("\n")
 
